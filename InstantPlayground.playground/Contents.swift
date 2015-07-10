@@ -221,6 +221,24 @@ print(dateString(future))
 future = ((future + 3.years) + 1.minute) + 2.months
 print(dateString(future))
 
+// This works as expected:
+// future = future + 3.years + 1.minute + 2.months
+//
+// However, this does not work yet:
+// future += 3.years + 1.minute + 2.months
+//
+// One idea may be to give CalendarUnitSpan a private NSCalendarComponents
+// variable which can be used when adding instances together, such that:
+//
+//    1.day + 1.hour = NSDateComponents(day: 1, hour: 1)
+//
+// rather than:
+//
+//    1.day + 1.hour = 25 hours
+//
+
+
+
 
 //------------------------------------------------------------------------------
 // Equality Tests
