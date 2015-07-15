@@ -142,15 +142,33 @@ func - (lhs: DateComponents, rhs: DateComponents) -> DateComponents {
         second: lhs.second - rhs.second)
 }
 
+func - (lhs: NSDate?, rhs: DateComponents) -> NSDate? {
+    guard let date = lhs else { return lhs }
+
+    let comps = NSCalendar.currentCalendar().componentsFromDate(date)
+    return NSCalendar.currentCalendar().dateFromComponents(comps - rhs)
+}
+
 func -= (inout lhs: DateComponents, rhs: DateComponents) {
     lhs = lhs - rhs
 }
 
 func -= (inout lhs: NSDate?, rhs: DateComponents) {
-    guard let date = lhs else { return }
+    lhs = lhs - rhs
+}
 
-    let comps = NSCalendar.currentCalendar().componentsFromDate(date)
-    lhs = NSCalendar.currentCalendar().dateFromComponents(comps - rhs)
+extension NSDate {
+    class func now() -> NSDate {
+        return NSDate()
+    }
+
+    class func today() -> NSDate {
+        var comps = NSCalendar.currentCalendar().componentsFromDate(self.now())
+        comps.hour = 0
+        comps.minute = 0
+        comps.second = 0
+        return NSCalendar.currentCalendar().dateFromComponents(comps)!
+    }
 }
 
 var c1 = DateComponents(year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 70)
@@ -186,3 +204,7 @@ print(dateString(date))
 //date += (-3).days
 
 date -= 1.day + 5.minutes
+
+let now = NSDate.now()
+let today = NSDate.today()
+
