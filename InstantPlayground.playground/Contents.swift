@@ -12,264 +12,177 @@ func dateString(date: NSDate?) -> String {
     return formatter.stringFromDate(date)
 }
 
-func calendarUnitAsString(unit: NSCalendarUnit) -> String {
-    switch unit {
-    case NSCalendarUnit.Year:
-        return "year"
+struct DateComponents : Comparable, Equatable {
+    var year: Int
+    var month: Int
+    var day: Int
+    var hour: Int
+    var minute: Int
+    var second: Int
 
-    case NSCalendarUnit.Month:
-        return "month"
+    init() {
+        self.init(year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0)
+    }
 
-    case NSCalendarUnit.Day:
-        return "day"
+    init(year: Int, month: Int, day: Int) {
+        self.init(year: year, month: month, day: day, hour: 0, minute: 0, second: 0)
+    }
 
-    case NSCalendarUnit.Hour:
-        return "hour"
+    init(hour: Int, minute: Int, second: Int) {
+        self.init(year: 0, month: 0, day: 0, hour: hour, minute: minute, second: second)
+    }
 
-    case NSCalendarUnit.Minute:
-        return "minute"
+    init(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int) {
+        self.year = year
+        self.month = month
+        self.day = day
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+    }
 
-    case NSCalendarUnit.Second:
-        return "second"
-
-    default:
-        return "other"
+    init(components: NSDateComponents) {
+        self.init(year: components.year, month: components.month, day: components.day, hour: components.hour, minute: components.minute, second: components.second)
     }
 }
 
-//------------------------------------------------------------------------------
-// NSCalendar Extension
-//------------------------------------------------------------------------------
+extension NSDateComponents {
+    convenience init(_ components: DateComponents) {
+        self.init()
+
+        year = components.year
+        month = components.month
+        day = components.day
+        hour = components.hour
+        minute = components.minute
+        second = components.second
+    }
+}
 
 extension NSCalendar {
+    func componentsFromDate(date: NSDate) -> DateComponents {
+        return DateComponents(components: self.components([NSCalendarUnit.Year, NSCalendarUnit.Month, NSCalendarUnit.Day, NSCalendarUnit.Hour, NSCalendarUnit.Minute, NSCalendarUnit.Second], fromDate: date))
+    }
 
-    private var referenceDate: NSDate { get {
-//        return NSDate.distantPast() as NSDate
-        let comps = NSDateComponents()
-        comps.year = 1970
-        comps.month = 1
-        comps.day = 1
-        comps.hour = 0
-        comps.minute = 0
-        comps.second = 0
-        return NSCalendar.currentCalendar().dateFromComponents(comps)!
-    } }
+    func dateFromComponents(comps: DateComponents) -> NSDate? {
+        return self.dateFromComponents(NSDateComponents(comps))
+    }
 
-    internal func dateWithSpanFromReferenceDate<T: IntegerType>(span: CalendarUnitSpan<T>) -> NSDate? {
-        return self.dateByAddingComponents(span.dateComponents, toDate: referenceDate, options: NSCalendarOptions(rawValue: 0))
+    func dateByAddingComponents(comps: DateComponents, toDate date: NSDate, options opts: NSCalendarOptions) -> NSDate? {
+        return self.dateByAddingComponents(NSDateComponents(comps), toDate: date, options: opts)
     }
 }
-
-
-
-//------------------------------------------------------------------------------
-// Calendar Unit Span
-//------------------------------------------------------------------------------
-
-struct CalendarUnitSpan<T: IntegerType> : Equatable, Comparable {
-    var span: T
-    var unit: NSCalendarUnit
-
-    var dateComponents: NSDateComponents { get {
-        guard let span = span as? Int where span != 0 else { return NSDateComponents() }
-
-        let comps = NSDateComponents()
-
-        switch unit {
-
-        case NSCalendarUnit.Second:
-            comps.second = span
-
-        case NSCalendarUnit.Minute:
-            comps.minute = span
-
-        case NSCalendarUnit.Hour:
-            comps.hour = span
-
-        case NSCalendarUnit.Day:
-            comps.day = span
-
-        case NSCalendarUnit.Month:
-            comps.month = span
-
-        case NSCalendarUnit.Year:
-            comps.year = span
-
-        default:
-            break
-        }
-
-        return comps
-    }}
-
-    // This method is just for testing.
-    func description() -> String {
-        var unitName = calendarUnitAsString(unit)
-        if (span as! Int) != 1 {
-            unitName += "s"
-        }
-        return "\(span) \(unitName)"
-    }
-}
-
-// Equatable
-func == <T: IntegerType>(lhs: CalendarUnitSpan<T>, rhs: CalendarUnitSpan<T>) -> Bool {
-    // Try simple check of values first.
-    if lhs.span == rhs.span && lhs.unit.rawValue == rhs.unit.rawValue {
-        return true
-    }
-
-    // Do date math to check for equality.
-    guard
-        let lhsDate = NSCalendar.currentCalendar().dateWithSpanFromReferenceDate(lhs),
-        let rhsDate = NSCalendar.currentCalendar().dateWithSpanFromReferenceDate(rhs)
-    else { return false }
-
-    return lhsDate.isEqualToDate(rhsDate)
-}
-
-// Comparable
-func < <T:IntegerType>(lhs: CalendarUnitSpan<T>, rhs: CalendarUnitSpan<T>) -> Bool {
-    // Eliminate equality to adhere to strict total order
-    if lhs == rhs {
-        return false
-    }
-
-    // Try simple check of values first.
-    if lhs.span < rhs.span && lhs.unit.rawValue <= rhs.unit.rawValue {
-        return true
-    }
-
-    // Do date math to check for equality.
-    guard
-        let lhsDate = NSCalendar.currentCalendar().dateWithSpanFromReferenceDate(lhs),
-        let rhsDate = NSCalendar.currentCalendar().dateWithSpanFromReferenceDate(rhs)
-    else { return false }
-
-    return lhsDate.compare(rhsDate) == .OrderedAscending
-}
-
-
-
-//------------------------------------------------------------------------------
-// IntegerType Extension
-//------------------------------------------------------------------------------
 
 extension IntegerType {
-    var second: CalendarUnitSpan<Self> { get { return seconds } }
-    var seconds: CalendarUnitSpan<Self> { get { return CalendarUnitSpan(span: self, unit: .Second) } }
+    var years: DateComponents { get { return DateComponents(year: self as! Int, month: 0, day: 0) } }
+    var year: DateComponents { get { return self.years } }
 
-    var minute: CalendarUnitSpan<Self> { get { return minutes } }
-    var minutes: CalendarUnitSpan<Self> { get { return CalendarUnitSpan(span: self, unit: .Minute) } }
+    var months: DateComponents { get { return DateComponents(year: 0, month: self as! Int, day: 0) } }
+    var month: DateComponents { get { return self.months } }
 
-    var hour: CalendarUnitSpan<Self> { get { return hours } }
-    var hours: CalendarUnitSpan<Self> { get { return CalendarUnitSpan(span: self, unit: .Hour) } }
+    var days: DateComponents { get { return DateComponents(year: 0, month: 0, day: self as! Int) } }
+    var day: DateComponents { get { return self.days } }
 
-    var day: CalendarUnitSpan<Self> { get { return days } }
-    var days: CalendarUnitSpan<Self> { get { return CalendarUnitSpan(span: self, unit: .Day) } }
+    var hours: DateComponents { get { return DateComponents(hour: self as! Int, minute: 0, second: 0) } }
+    var hour: DateComponents { get { return self.hours } }
 
-    var month: CalendarUnitSpan<Self> { get { return months } }
-    var months: CalendarUnitSpan<Self> { get { return CalendarUnitSpan(span: self, unit: .Month) } }
+    var minutes: DateComponents { get { return DateComponents(hour: 0, minute: self as! Int, second: 0) } }
+    var minute: DateComponents { get { return self.minutes } }
 
-    var year: CalendarUnitSpan<Self> { get { return years } }
-    var years: CalendarUnitSpan<Self> { get { return CalendarUnitSpan(span: self, unit: .Year) } }
+    var seconds: DateComponents { get { return DateComponents(hour: 0, minute: 0, second: self as! Int) } }
+    var second: DateComponents { get { return self.seconds } }
 }
 
+func < (lhs: DateComponents, rhs: DateComponents) -> Bool {
+    guard lhs != rhs else { return false }
+    guard
+        let lhsDate = NSCalendar.currentCalendar().dateFromComponents(lhs),
+        let rhsDate = NSCalendar.currentCalendar().dateFromComponents(rhs) else { return false }
 
-
-//------------------------------------------------------------------------------
-// NSDate operations
-//------------------------------------------------------------------------------
-
-func + <T: IntegerType>(lhs: NSDate?, rhs: CalendarUnitSpan<T>) -> NSDate? {
-    guard let lhs = lhs else { return nil }
-
-    return NSCalendar.currentCalendar().dateByAddingComponents(rhs.dateComponents, toDate: lhs, options: NSCalendarOptions(rawValue: 0))
+    return lhsDate.compare(rhsDate) == NSComparisonResult.OrderedAscending
 }
 
-func += <T: IntegerType>(lhs: NSDate?, rhs: CalendarUnitSpan<T>) -> NSDate? {
-    return lhs + rhs
+func == (lhs: DateComponents, rhs: DateComponents) -> Bool {
+    guard
+        let lhsDate = NSCalendar.currentCalendar().dateFromComponents(lhs),
+        let rhsDate = NSCalendar.currentCalendar().dateFromComponents(rhs) else { return false }
+
+    return lhsDate.compare(rhsDate) == NSComparisonResult.OrderedSame
 }
 
+func + (lhs: DateComponents, rhs: DateComponents) -> DateComponents {
+    return DateComponents(year: lhs.year + rhs.year,
+        month: lhs.month + rhs.month,
+        day: lhs.day + rhs.day,
+        hour: lhs.hour + rhs.hour,
+        minute: lhs.minute + rhs.minute,
+        second: lhs.second + rhs.second)
+}
 
+func += (inout lhs: DateComponents, rhs: DateComponents) {
+    lhs = lhs + rhs
+}
 
-//------------------------------------------------------------------------------
-// Operation Tests
-//------------------------------------------------------------------------------
+func + (lhs: NSDate?, rhs: DateComponents) -> NSDate? {
+    guard let date = lhs else { return lhs }
+    return NSCalendar.currentCalendar().dateByAddingComponents(rhs, toDate: date, options: NSCalendarOptions(rawValue: 0))
+}
 
-let date = NSDate()
-print(dateString(date))
+func += (inout lhs: NSDate?, rhs: DateComponents) {
+    guard let date = lhs else { return }
+    lhs = NSCalendar.currentCalendar().dateByAddingComponents(rhs, toDate: date, options: NSCalendarOptions(rawValue: 0))
+}
 
-var future = date + 30.seconds
-print(dateString(future))
+func - (lhs: DateComponents, rhs: DateComponents) -> DateComponents {
+    return DateComponents(year: lhs.year - rhs.year,
+        month: lhs.month - rhs.month,
+        day: lhs.day - rhs.day,
+        hour: lhs.hour - rhs.hour,
+        minute: lhs.minute - rhs.minute,
+        second: lhs.second - rhs.second)
+}
 
-future = future + 5.minutes
-print(dateString(future))
+func -= (inout lhs: DateComponents, rhs: DateComponents) {
+    lhs = lhs - rhs
+}
 
-future += 1.hour
-print(dateString(future))
+func -= (inout lhs: NSDate?, rhs: DateComponents) {
+    guard let date = lhs else { return }
 
-future += 5.days
-print(dateString(future))
+    let comps = NSCalendar.currentCalendar().componentsFromDate(date)
+    lhs = NSCalendar.currentCalendar().dateFromComponents(comps - rhs)
+}
 
-future += 5.months
-print(dateString(future))
+var c1 = DateComponents(year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 70)
+var c2 = DateComponents(year: 0, month: 0, day: 0, hour: 0, minute: 2, second: 10)
 
-future = future + 5.years
-print(dateString(future))
+c1 == c2
+c1 != c2
+c1 > c2
+c1 < c2
 
-future = ((future + 3.years) + 1.minute) + 2.months
-print(dateString(future))
-
-// This works as expected:
-// future = future + 3.years + 1.minute + 2.months
-//
-// However, this does not work yet:
-// future += 3.years + 1.minute + 2.months
-//
-// One idea may be to give CalendarUnitSpan a private NSCalendarComponents
-// variable which can be used when adding instances together, such that:
-//
-//    1.day + 1.hour = NSDateComponents(day: 1, hour: 1)
-//
-// rather than:
-//
-//    1.day + 1.hour = 25 hours
-//
-
-
-
-
-//------------------------------------------------------------------------------
-// Equality Tests
-//------------------------------------------------------------------------------
-
-1.year == 1.year
-1.year == 365.days
-1.month == 31.days
-1.hour == 60.minutes
-1.minute == 60.seconds
-1.day == 24.hours
-1440.minutes == 1.day
-2880.minutes == 2.days
-
-
-
-//------------------------------------------------------------------------------
-// Comparable Tests
-//------------------------------------------------------------------------------
+let c3 = c1 + c2
+c3.year
 
 1.year < 2.years
-2.years < 1.year
-11.months < 1.year
-11.months < 10.months
-10.months < 11.months
-11.months > 10.months
-10.months > 11.months
-59.seconds < 1.minute
-2.minutes >= 120.seconds
-60.minutes >= 1.hour
+3.years < 2.years
+5.years == 5.years
+
+(1.minute + 10.seconds) == 70.seconds
+
+var a = 1.second
+a += 3.seconds
+a.second
+
+a -= 2.seconds
+a.second
 
 
+var date = NSCalendar.currentCalendar().dateFromComponents(DateComponents(year: 2015, month: 7, day: 15))
+print(dateString(date))
 
-print("still good")
+//date += 3.days + 5.minutes
+
+//date += (-3).days
+
+date -= 1.day + 5.minutes
